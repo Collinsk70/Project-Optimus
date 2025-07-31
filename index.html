@@ -5,44 +5,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Optimus</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Modal for better output display */
+        #outputModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        #outputBox {
+            background: #111;
+            color: #0ff;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 500px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 20px cyan;
+        }
+        #closeBtn {
+            margin-top: 15px;
+            background: #0ff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        /* Voice button styled like submit */
+        #voiceBtn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 1rem;
+            color: #fff;
+            background: linear-gradient(90deg, #00ffe0, #00ffff);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 0 10px #00ffe0;
+            text-transform: uppercase;
+        }
+
+        #voiceBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #00ffff, 0 0 30px #00ffe0;
+        }
+
+    </style>
 </head>
 <body>
     <div>
-        <h1>Ai Model</h1>
+        <h1>AI Model</h1>
     </div>
     <div class="input-box">
         <input type="text" id="query" placeholder="Ask me anything...">
         <br>
-        <button class="submit" onclick="askAI()">Submit</button>
+        <button class="submit" onclick="askAI()">Prompt</button>
+        <button id="voiceBtn" onclick="startVoiceInput()">Speak</button>
+    </div>
+
+    <!-- Modal for displaying the answer -->
+    <div id="outputModal">
+        <div id="outputBox">
+            <p id="answerText"></p>
+            <button id="closeBtn" onclick="closeModal()">Close</button>
+        </div>
     </div>
 
     <script>
-        // Function to fetch a quick answer using DuckDuckGo's free Instant Answer API
-        async function fetchAnswer(query) {
-            const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`;
+        // Fetch from SerpAPI proxy
+        async function fetchSerpAnswer(query) {
             try {
-                const response = await fetch(url);
+                const response = await fetch(`http://localhost:3000/ask?q=${encodeURIComponent(query)}`);
                 const data = await response.json();
 
-                // Prefer AbstractText if available, otherwise Fallback to Heading
-                if (data.AbstractText) {
-                    return data.AbstractText;
-                } else if (data.Heading) {
-                    return `I found something about ${data.Heading}, but no detailed summary.`;
-                } else {
-                    return "I couldn't find a detailed answer for that.";
+                if (data.answer_box?.answer) return data.answer_box.answer;
+                if (data.answer_box?.snippet) return data.answer_box.snippet;
+                if (data.knowledge_graph?.description) return data.knowledge_graph.description;
+
+                // Filter organic results to avoid songs/videos
+                if (data.organic_results?.length > 0) {
+                    const result = data.organic_results.find(r =>
+                        r.snippet && !/song|video|youtube|music/i.test(r.title)
+                    );
+                    if (result) return result.snippet;
                 }
+
+                return null;
             } catch (error) {
                 console.error(error);
-                return "An error occurred while searching.";
+                return null;
             }
         }
 
-        // Function to speak text via Web Speech API
+        // Wikipedia fallback
+        async function fetchWikipediaAnswer(query) {
+            try {
+                const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+                const searchResponse = await fetch(searchUrl);
+                const searchData = await searchResponse.json();
+
+                if (!searchData.query.search.length) return null;
+
+                const firstResultTitle = searchData.query.search[0].title;
+                const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(firstResultTitle)}`;
+                const summaryResponse = await fetch(summaryUrl);
+                const summaryData = await summaryResponse.json();
+
+                return summaryData.extract ? summaryData.extract.split('. ')[0] + '.' : null;
+            } catch (error) {
+                console.error(error);
+                return null;
+            }
+        }
+
+        // Typing animation
+        function typeText(element, text, speed = 40) {
+            element.innerHTML = "";
+            let i = 0;
+            const interval = setInterval(() => {
+                element.innerHTML += text.charAt(i);
+                i++;
+                if (i >= text.length) clearInterval(interval);
+            }, speed);
+        }
+
+        // Speak text
         function speak(text) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = "en-US";
             speechSynthesis.speak(utterance);
+        }
+
+        // Show modal with typing animation
+        function showModal(answer) {
+            const modal = document.getElementById('outputModal');
+            const answerText = document.getElementById('answerText');
+            modal.style.display = 'flex';
+            typeText(answerText, answer);
+        }
+
+        function closeModal() {
+            document.getElementById('outputModal').style.display = 'none';
         }
 
         // Main AI function
@@ -53,14 +162,43 @@
                 return;
             }
 
-            // Fetch answer from the web
-            const answer = await fetchAnswer(query);
+            // 1. Try SerpAPI
+            let answer = await fetchSerpAnswer(query);
 
-            // Show output in alert
-            alert(answer);
+            // 2. Fallback to Wikipedia
+            if (!answer || answer.length < 5) {
+                answer = await fetchWikipediaAnswer(query) || "I couldn't find a clear answer.";
+            }
 
-            // Speak the answer
+            // 3. Display and speak
+            showModal(answer);
             speak(answer);
+        }
+
+        // Voice input using Web Speech API
+        function startVoiceInput() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Your browser does not support speech recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = "en-US";
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                const voiceQuery = event.results[0][0].transcript;
+                document.getElementById('query').value = voiceQuery;
+                askAI();
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error:", event.error);
+            };
         }
     </script>
 </body>
