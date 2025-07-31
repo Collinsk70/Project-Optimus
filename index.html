@@ -50,12 +50,10 @@
             box-shadow: 0 0 10px #00ffe0;
             text-transform: uppercase;
         }
-
         #voiceBtn:hover {
             transform: scale(1.05);
             box-shadow: 0 0 20px #00ffff, 0 0 30px #00ffe0;
         }
-
     </style>
 </head>
 <body>
@@ -88,7 +86,6 @@
                 if (data.answer_box?.snippet) return data.answer_box.snippet;
                 if (data.knowledge_graph?.description) return data.knowledge_graph.description;
 
-                // Filter organic results to avoid songs/videos
                 if (data.organic_results?.length > 0) {
                     const result = data.organic_results.find(r =>
                         r.snippet && !/song|video|youtube|music/i.test(r.title)
@@ -200,6 +197,58 @@
                 console.error("Speech recognition error:", event.error);
             };
         }
+
+        // --- Wake word detection with single instance ---
+        let wakeRecognition;
+
+        function startWakeWordListener() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn("Wake word not supported in this browser.");
+                return;
+            }
+
+            if (!wakeRecognition) {
+                wakeRecognition = new SpeechRecognition();
+                wakeRecognition.lang = "en-US";
+                wakeRecognition.interimResults = true;
+                wakeRecognition.continuous = true;
+            }
+
+            wakeRecognition.onresult = function(event) {
+                const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                console.log("Heard:", transcript);
+
+                if (transcript.includes("hey optimus")) {
+                    wakeRecognition.stop();
+                    speak("Yes, how can I help you?");
+                    
+                    setTimeout(() => {
+                        startVoiceInput();
+                        setTimeout(() => {
+                            wakeRecognition.start();
+                        }, 8000);
+                    }, 1000);
+                }
+            };
+
+            wakeRecognition.onerror = function(event) {
+                console.error("Wake word listener error:", event.error);
+                if (event.error === "no-speech" || event.error === "network") {
+                    setTimeout(() => wakeRecognition.start(), 2000);
+                }
+            };
+
+            wakeRecognition.onend = function() {
+                console.log("Wake word listener ended, restarting...");
+                setTimeout(() => wakeRecognition.start(), 2000);
+            };
+
+            wakeRecognition.start();
+        }
+
+        // Start wake word listener on page load
+        window.onload = startWakeWordListener;
     </script>
 </body>
 </html>
