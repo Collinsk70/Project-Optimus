@@ -4,10 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Optimus</title>
-    <link rel="stylesheet" href="">style.css
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div>
+        <h1>Ai Model</h1>
+    </div>
+    <div class="input-box">
+        <input type="text" id="query" placeholder="Ask me anything...">
+        <br>
+        <button class="submit" onclick="askAI()">Submit</button>
+    </div>
 
-    
+    <script>
+        // Function to fetch a quick answer using DuckDuckGo's free Instant Answer API
+        async function fetchAnswer(query) {
+            const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Prefer AbstractText if available, otherwise Fallback to Heading
+                if (data.AbstractText) {
+                    return data.AbstractText;
+                } else if (data.Heading) {
+                    return `I found something about ${data.Heading}, but no detailed summary.`;
+                } else {
+                    return "I couldn't find a detailed answer for that.";
+                }
+            } catch (error) {
+                console.error(error);
+                return "An error occurred while searching.";
+            }
+        }
+
+        // Function to speak text via Web Speech API
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = "en-US";
+            speechSynthesis.speak(utterance);
+        }
+
+        // Main AI function
+        async function askAI() {
+            const query = document.getElementById("query").value.trim();
+            if (!query) {
+                alert("Please enter a question!");
+                return;
+            }
+
+            // Fetch answer from the web
+            const answer = await fetchAnswer(query);
+
+            // Show output in alert
+            alert(answer);
+
+            // Speak the answer
+            speak(answer);
+        }
+    </script>
 </body>
 </html>

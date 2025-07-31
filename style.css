@@ -1,0 +1,79 @@
+/* Import a futuristic font */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Orbitron', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Glowing AI title */
+h1 {
+    font-size: 3rem;
+    text-transform: uppercase;
+    color: #00ffe0;
+    text-shadow: 0 0 10px #00ffe0, 0 0 20px #00ffe0, 0 0 40px #00ffff;
+    animation: pulse 2s infinite alternate;
+}
+
+@keyframes pulse {
+    0% { text-shadow: 0 0 10px #00ffe0, 0 0 20px #00ffe0; }
+    100% { text-shadow: 0 0 20px #00ffe0, 0 0 40px #00ffff; }
+}
+
+/* Input box styling */
+.input-box {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.input-box input[type="text"] {
+    width: 300px;
+    padding: 12px 20px;
+    border: 2px solid #00ffe0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #00ffe0;
+    font-size: 1rem;
+    outline: none;
+    text-align: center;
+    box-shadow: 0 0 10px #00ffe0;
+    transition: 0.3s;
+}
+
+.input-box input[type="text"]:focus {
+    box-shadow: 0 0 20px #00ffff, 0 0 30px #00ffe0;
+    border-color: #00ffff;
+}
+
+/* Submit button futuristic style */
+.submit {
+    margin-top: 20px;
+    padding: 12px 30px;
+    font-size: 1rem;
+    color: #fff;
+    background: linear-gradient(90deg, #00ffe0, #00ffff);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+    box-shadow: 0 0 10px #00ffe0;
+    text-transform: uppercase;
+}
+
+.submit:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px #00ffff, 0 0 30px #00ffe0;
+}
